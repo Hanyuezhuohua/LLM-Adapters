@@ -17,6 +17,7 @@ import bitsandbytes as bnb
 """
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from peft import (  # noqa: E402
+    GaLoreAdamW,
     get_peft_model_state_dict,
     prepare_model_for_int8_training,
     set_peft_model_state_dict,
@@ -253,6 +254,7 @@ def train(
     for param in model.parameters():
         param.requires_grad = False
 
+    galore_params = []
     for module_name, module in model.named_modules():
         if not isinstance(module, nn.Linear):
             continue
@@ -262,18 +264,19 @@ def train(
 
         print('enable GaLore for weights in module: ', module_name)
         module.weight.requires_grad = True
+        galore_params.append(module.weight)
 
-    #param_groups = [{'params': galore_params, 'rank': galore_r, 'update_proj_gap': galore_update_proj_gap, 'scale': galore_scale, 'proj_type': galore_proj_type}]
-    #optimizer = GaLoreAdamW(param_groups, lr=learning_rate)
+    param_groups = [{'params': galore_params, 'rank': galore_r, 'update_proj_gap': galore_update_proj_gap, 'scale': galore_scale, 'proj_type': galore_proj_type}]
+    optimizer = GaLoreAdamW(param_groups, lr=learning_rate)
 
-    #print(num_epochs * len(train_data) // batch_size)
+    print(num_epochs * (len(train_data) // batch_size))
 
-    #scheduler = get_scheduler(
-    #    name="linear",
-    #    optimizer=optimizer,
-    #    num_warmup_steps=100,
-    #    num_training_steps=num_epochs * len(train_data) // batch_size
-    #)
+    scheduler = get_scheduler(
+        name="linear",
+        optimizer=optimizer,
+        num_warmup_steps=100,
+        num_training_steps=num_epochs * (len(train_data) // batch_size)
+    )
 
 
     trainer = transformers.Trainer(
@@ -288,9 +291,9 @@ def train(
             learning_rate=learning_rate,
             bf16=True,
             logging_steps=10,
-            optim="galore_adamw",
-            optim_target_modules=target_modules,
-            optim_args=f"rank={galore_r}, update_proj_gap={galore_update_proj_gap}, scale={galore_scale}, proj_type={galore_proj_type}",
+            #optim="galore_adamw",
+            #optim_target_modules=target_modules,
+            #optim_args=f"rank={galore_r}, update_proj_gap={galore_update_proj_gap}, scale={galore_scale}, proj_type={galore_proj_type}",
             evaluation_strategy="steps" if val_set_size > 0 else "no",
             save_strategy="steps",
             eval_steps=eval_step if val_set_size > 0 else None,
@@ -306,7 +309,7 @@ def train(
         data_collator=transformers.DataCollatorForSeq2Seq(
             tokenizer, pad_to_multiple_of=8, return_tensors="pt", padding=True
         ),
-        #optimizers = (optimizer, scheduler)
+        optimizers = (optimizer, scheduler)
     )
     model.config.use_cache = False
 
