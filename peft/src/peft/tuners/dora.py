@@ -312,8 +312,8 @@ class Linear(nn.Linear, DoraLayer):
             
         self.reset_parameters()
         if r > 0:
-            dora_weight = torch.matmul(self.lora_B.weight @ self.lora_A.weight)
-            weight_norm = self._get_weight_norm(self.weight, dora_weight, self.lora_scaling)
+            dora_weight = torch.matmul(self.dora_B.weight @ self.dora_A.weight)
+            weight_norm = self._get_weight_norm(self.weight, dora_weight, self.scaling)
             # magnitude column-wise across output dimension
             self.magnitude = nn.Parameter(weight_norm, requires_grad=True)
         if fan_in_fan_out:
@@ -326,8 +326,8 @@ class Linear(nn.Linear, DoraLayer):
             nn.init.kaiming_uniform_(self.dora_A.weight, a=math.sqrt(5))
             nn.init.zeros_(self.dora_B.weight)
 
-    def _get_weight_norm(self, weight, lora_weight, scaling):
-        weight = weight + scaling * lora_weight
+    def _get_weight_norm(self, weight, dora_weight, scaling):
+        weight = weight + scaling * dora_weight
         weight_norm = torch.linalg.norm(weight, dim=1).to(weight.dtype)
         return weight_norm
     
