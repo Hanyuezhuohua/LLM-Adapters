@@ -17,6 +17,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .dora import DoraConfig, DoraModel
 from .lora import LoraConfig, LoraModel
 from .bottleneck import BottleneckConfig, BottleneckModel
 from .p_tuning import PromptEncoder, PromptEncoderConfig, PromptEncoderReparameterizationType
