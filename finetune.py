@@ -49,6 +49,7 @@ def train(
         lora_alpha: int = 16,
         lora_dropout: float = 0.05,
         lora_target_modules: List[str] = None,
+        lora_interval: int = -1,
         # bottleneck adapter hyperparams
         bottleneck_size: int = 256,
         non_linearity: str = "tanh",
@@ -204,6 +205,7 @@ def train(
             lora_alpha=lora_alpha,
             target_modules=target_modules,
             lora_dropout=lora_dropout,
+            interval=lora_interval,
             bias="none",
             task_type="CAUSAL_LM",
         )
