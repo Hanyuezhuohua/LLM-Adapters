@@ -89,7 +89,7 @@ def train(
         f"dora_r: {lora_r}\n"
         f"dora_alpha: {lora_alpha}\n"
         f"dora_dropout: {lora_dropout}\n"
-        f"dora_target_modules: {lora_target_modules}\n"
+        f"dora_target_modules: {dora_target_modules}\n"
         f"lora_r: {lora_r}\n"
         f"lora_alpha: {lora_alpha}\n"
         f"lora_dropout: {lora_dropout}\n"
