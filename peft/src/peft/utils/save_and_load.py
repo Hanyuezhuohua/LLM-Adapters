@@ -49,24 +49,20 @@ def get_peft_model_state_dict(model, state_dict=None):
         else:
             raise NotImplementedError
     elif model.peft_config.peft_type == PeftType.DORA:
-        # to_return = lora_state_dict(model, bias=model.peft_config.bias)
-        # adapted from `https://github.com/microsoft/LoRA/blob/main/loralib/utils.py`
-        # to directly with the state dict which is necessary when using DeepSpeed or FSDP
+
         bias = model.peft_config.bias
         if bias == "none":
-            to_return = {k: state_dict[k] for k in state_dict if "dora_" in k}
+            to_return = {k: state_dict[k] for k in state_dict if ("lora_" in k or "weight_m_wdecomp" in k)}
         elif bias == "all":
-            to_return = {k: state_dict[k] for k in state_dict if "dora_" in k or "bias" in k}
-        elif bias == "dora_only":
+            to_return = {k: state_dict[k] for k in state_dict if "lora_" in k or "bias" in k or "weight_m_wdecomp" in k}
+        elif bias == "lora_only":
             to_return = {}
             for k in state_dict:
-                if "dora_" in k:
+                if "lora_" in k:
                     to_return[k] = state_dict[k]
-                    bias_name = k.split("dora_")[0] + "bias"
+                    bias_name = k.split("lora_")[0] + "bias"
                     if bias_name in state_dict:
                         to_return[bias_name] = state_dict[bias_name]
-        else:
-            raise NotImplementedError
     elif model.peft_config.peft_type == PeftType.BOTTLENECK:
         # return the state dict of the model with Bottleneck adapters
         bias = model.peft_config.bias

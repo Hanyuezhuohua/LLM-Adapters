@@ -44,11 +44,6 @@ def train(
         use_gradient_checkpointing: bool = False,
         eval_step: int = 200,
         save_step: int = 200,
-        # dora hyperparams
-        dora_r: int = 8,
-        dora_alpha: int = 16,
-        dora_dropout: float = 0.05,
-        dora_target_modules: List[str] = None,
         # lora hyperparams
         lora_r: int = 8,
         lora_alpha: int = 16,
@@ -61,6 +56,9 @@ def train(
         use_parallel_adapter: bool = False,
         use_adapterp: bool = False,
         target_modules: List[str] = None,
+        # Dora hyperparams
+        dora_simple: bool = True,
+        Wdecompose_target_modules: List[str] = None,
         scaling: Union[float, str] = 1.0,
         # prefix tuning hyperparams
         num_virtual_tokens: int = 30,
@@ -86,10 +84,6 @@ def train(
         f"cutoff_len: {cutoff_len}\n"
         f"val_set_size: {val_set_size}\n"
         f"use_gradient_checkpointing: {use_gradient_checkpointing}\n"
-        f"dora_r: {lora_r}\n"
-        f"dora_alpha: {lora_alpha}\n"
-        f"dora_dropout: {lora_dropout}\n"
-        f"dora_target_modules: {dora_target_modules}\n"
         f"lora_r: {lora_r}\n"
         f"lora_alpha: {lora_alpha}\n"
         f"lora_dropout: {lora_dropout}\n"
@@ -214,13 +208,16 @@ def train(
             task_type="CAUSAL_LM",
         )
     elif adapter_name == "dora":
+        print("DoRA init")
         config = DoraConfig(
-            r=dora_r,
-            dora_alpha=dora_alpha,
+            r=lora_r,
+            lora_alpha=lora_alpha,
             target_modules=target_modules,
-            dora_dropout=dora_dropout,
+            lora_dropout=lora_dropout,
             bias="none",
             task_type="CAUSAL_LM",
+            dora_simple=dora_simple,
+            Wdecompose_target_modules=Wdecompose_target_modules
         )
     elif adapter_name == "bottleneck":
         config = BottleneckConfig(
