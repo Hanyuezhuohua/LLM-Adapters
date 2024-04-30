@@ -15,6 +15,7 @@ import bitsandbytes as bnb
 """
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from peft import (  # noqa: E402
+    DoraConfig,
     LoraConfig,
     BottleneckConfig,
     PrefixTuningConfig,
@@ -43,6 +44,11 @@ def train(
         use_gradient_checkpointing: bool = False,
         eval_step: int = 200,
         save_step: int = 200,
+        # dora hyperparams
+        dora_r: int = 8,
+        dora_alpha: int = 16,
+        dora_dropout: float = 0.05,
+        dora_target_modules: List[str] = None,
         # lora hyperparams
         lora_r: int = 8,
         lora_alpha: int = 16,
@@ -80,6 +86,10 @@ def train(
         f"cutoff_len: {cutoff_len}\n"
         f"val_set_size: {val_set_size}\n"
         f"use_gradient_checkpointing: {use_gradient_checkpointing}\n"
+        f"dora_r: {lora_r}\n"
+        f"dora_alpha: {lora_alpha}\n"
+        f"dora_dropout: {lora_dropout}\n"
+        f"dora_target_modules: {lora_target_modules}\n"
         f"lora_r: {lora_r}\n"
         f"lora_alpha: {lora_alpha}\n"
         f"lora_dropout: {lora_dropout}\n"
@@ -200,6 +210,15 @@ def train(
             lora_alpha=lora_alpha,
             target_modules=target_modules,
             lora_dropout=lora_dropout,
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+    elif adapter_name == "dora":
+        config = DoraConfig(
+            r=dora_r,
+            dora_alpha=dora_alpha,
+            target_modules=target_modules,
+            dora_dropout=dora_dropout,
             bias="none",
             task_type="CAUSAL_LM",
         )
