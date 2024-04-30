@@ -106,6 +106,13 @@ def train(
             trust_remote_code=True,
         )
 
+    for param in model.model.layers.parameters():
+        param.requires_grad = False
+    for param in model.model.layers[15].parameters():
+        param.requires_grad = True
+    for param in model.model.layers[16].parameters():
+        param.requires_grad = True
+
     if model.config.model_type == "llama":
         # Due to the name of transformers' LlamaTokenizer, we have to do this
         tokenizer = LlamaTokenizer.from_pretrained(base_model)
