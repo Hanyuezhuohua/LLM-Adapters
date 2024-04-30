@@ -11,7 +11,7 @@ import torch
 
 sys.path.append(os.path.join(os.getcwd(), "peft/src/"))
 from tqdm import tqdm
-from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer
+from transformers import GenerationConfig, LlamaForCausalLM, LlamaTokenizer, AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
 if torch.cuda.is_available():
     device = "cuda"
@@ -67,7 +67,7 @@ def main(
         print(outputs)
         return outputs
 
-    save_file = f'experiment/{args.model}-{args.adapter}-{args.dataset}.json'
+    save_file = f'experiment/{args.model}-lisa-{args.dataset}.json'
     create_dir('experiment/')
 
     dataset = load_data(args)
@@ -170,7 +170,8 @@ def parse_args():
     parser.add_argument('--model', choices=['LLaMA-7B', "LLaMA-13B",'BLOOM-7B', 'GPT-j-6B'], required=True)
     parser.add_argument('--base_model', required=True)
     parser.add_argument('--batch_size', type=int, required=True)
-    parser.add_argument('--load_8bit', action='store_true', default=False)
+    parser.add_argument('--tokenizer', required=True)
+
 
     return parser.parse_args()
 
@@ -188,11 +189,10 @@ def load_model(args) -> tuple:
     if not base_model:
         raise ValueError(f'can not find base model name by the value: {args.model}')
     
-    load_8bit = args.load_8bit
     if "LLaMA" in args.model:
-        tokenizer = LlamaTokenizer.from_pretrained(base_model)
+        tokenizer = LlamaTokenizer.from_pretrained(args.tokenizer)
     else:
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer)
     tokenizer.padding_side = "left"
     tokenizer.pad_token_id = (
         0  # unk. we want this to be different from the eos token
@@ -200,7 +200,6 @@ def load_model(args) -> tuple:
     if device == "cuda":
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
-            load_in_8bit=load_8bit,
             torch_dtype=torch.float16,
             device_map="auto",
             trust_remote_code=True,
@@ -221,8 +220,7 @@ def load_model(args) -> tuple:
         model.config.bos_token_id = 1
         model.config.eos_token_id = 2
 
-        if not load_8bit:
-            model.half()  # seems to fix bugs for some users.
+        model.half()  # seems to fix bugs for some users.
 
         model.eval()
         if torch.__version__ >= "2" and sys.platform != "win32":
