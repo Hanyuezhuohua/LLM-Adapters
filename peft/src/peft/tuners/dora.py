@@ -312,7 +312,7 @@ class Linear(nn.Linear, DoraLayer):
             
         self.reset_parameters()
         if r > 0:
-            dora_weight = torch.matmul(self.dora_B.weight @ self.dora_A.weight)
+            dora_weight = self.dora_B.weight @ self.dora_A.weight
             weight_norm = self._get_weight_norm(self.weight, dora_weight, self.scaling)
             # magnitude column-wise across output dimension
             self.magnitude = nn.Parameter(weight_norm, requires_grad=True)
