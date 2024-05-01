@@ -108,9 +108,9 @@ def train(
 
     for param in model.model.layers.parameters():
         param.requires_grad = False
-    for param in model.model.layers[15].parameters():
+    for param in model.model.layers[11].parameters():
         param.requires_grad = True
-    for param in model.model.layers[16].parameters():
+    for param in model.model.layers[22].parameters():
         param.requires_grad = True
 
     if model.config.model_type == "llama":

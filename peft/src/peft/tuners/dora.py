@@ -100,6 +100,7 @@ class DoraConfig(PeftConfig):
             "the final layer `classifier/score` are randomly initialized and as such need to be trainable and saved."
         },
     )
+    interval: int = field(default=-1, metadata={"help": "Lora space change interval"})
 
     def __post_init__(self):
         self.peft_type = PeftType.DORA
@@ -153,7 +154,8 @@ class DoraModel(torch.nn.Module):
             "fan_in_fan_out": self.peft_config.fan_in_fan_out,
             "merge_weights": (self.peft_config.merge_weights or self.peft_config.inference_mode)
             and not is_hf_device_map_available,
-            "dora_simple": self.peft_config.dora_simple
+            "dora_simple": self.peft_config.dora_simple,
+            "interval": self.peft_config.interval,
         }
         key_list = [key for key, _ in self.model.named_modules()]
         for key in key_list:
@@ -349,6 +351,7 @@ class Linear(nn.Linear, LoraLayer):
         merge_weights: bool = True,
         Wdecompose: bool = False,
         dora_simple: bool = True,
+        interval: int = -1,
         **kwargs,
     ):
         nn.Linear.__init__(self, in_features, out_features, **kwargs)
@@ -370,9 +373,18 @@ class Linear(nn.Linear, LoraLayer):
         self.reset_parameters()
         if fan_in_fan_out:
             self.weight.data = self.weight.data.T
+        self.interval = interval
+        if self.interval != -1:
+            self.cur_step = 1
 
     def reset_parameters(self):
         nn.Linear.reset_parameters(self)
+        if hasattr(self, "lora_A"):
+            # initialize A the same way as the default for nn.Linear and B to zero
+            nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
+            nn.init.zeros_(self.lora_B.weight)
+
+    def reset_lora(self):
         if hasattr(self, "lora_A"):
             # initialize A the same way as the default for nn.Linear and B to zero
             nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
@@ -410,6 +422,15 @@ class Linear(nn.Linear, LoraLayer):
 
     def forward(self, x: torch.Tensor):
         previous_dtype = self.weight.dtype
+
+        if self.training and self.r > 0 and self.interval != -1:
+            if self.cur_step % self.interval == 0:
+                new_weight_v = self.weight + transpose(self.lora_B.weight @ self.lora_A.weight, fan_in_fan_out=self.fan_in_fan_out) * self.scaling
+                weight = ( self.weight_m_wdecomp.weight / (torch.linalg.norm(new_weight_v,dim=1)).unsqueeze(1)) * new_weight_v
+                self.weight.data.copy_(weight.detach())
+                self.reset_lora()
+                self.weight_m_wdecomp.reset_parameters()
+            self.cur_step += 1
 
         if self.disable_adapters:
             raise NotImplementedError

@@ -315,12 +315,17 @@ class Linear(nn.Linear, LoraLayer):
         if fan_in_fan_out:
             self.weight.data = self.weight.data.T
         self.interval = interval
-        print(self.interval)
         if self.interval != -1:
             self.cur_step = 1
 
     def reset_parameters(self):
         nn.Linear.reset_parameters(self)
+        if hasattr(self, "lora_A"):
+            # initialize A the same way as the default for nn.Linear and B to zero
+            nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
+            nn.init.zeros_(self.lora_B.weight)
+
+    def reset_lora(self):
         if hasattr(self, "lora_A"):
             # initialize A the same way as the default for nn.Linear and B to zero
             nn.init.kaiming_uniform_(self.lora_A.weight, a=math.sqrt(5))
@@ -357,8 +362,8 @@ class Linear(nn.Linear, LoraLayer):
             if self.cur_step % self.interval == 0:
                 self.weight.data += (
                     transpose(self.lora_B.weight @ self.lora_A.weight, self.fan_in_fan_out) * self.scaling
-                )
-                self.reset_parameters()
+                ).detach()
+                self.reset_lora()
             self.cur_step += 1
 
         if self.disable_adapters:
